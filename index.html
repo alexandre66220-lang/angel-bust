@@ -624,12 +624,34 @@
     }
 
     /* ============================================================
+       PARTICULES
+    ============================================================ */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ============================================================
        UTILITAIRE
     ============================================================ */
     canvas { display: block; }
+
+    /* S'assurer que le contenu passe au-dessus des particules */
+    #preloader, #navbar, #hero, #section-3d,
+    #collection, #savoir-faire, #cta, footer {
+      position: relative;
+      z-index: 1;
+    }
   </style>
 </head>
 <body>
+
+  <!-- Canvas particules dorées (fond fixe) -->
+  <canvas id="particle-canvas"></canvas>
 
   <!-- ============================================================
        PRELOADER
@@ -1081,6 +1103,174 @@
       msgs.forEach(m => m.classList.add('active'));
       setInterval(() => { targetRotY += 0.008; }, 16);
     }
+
+    /* ====================================================
+       PARTICULES DORÉES — réagissent au scroll
+    ==================================================== */
+    (function () {
+      const pCanvas = document.getElementById('particle-canvas');
+      const pCtx    = pCanvas.getContext('2d');
+
+      const GOLD_COLORS = ['#C9A84C', '#E8C96A', '#D4B45A', '#F0D678', '#B89040'];
+      const MAX_PARTICLES = 180;
+
+      /* État scroll global (0 = haut, 1 = bas de page) */
+      let scrollRatio = 0;
+      function updateScrollRatio() {
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        scrollRatio = maxScroll > 0 ? clamp(window.scrollY / maxScroll, 0, 1) : 0;
+      }
+      window.addEventListener('scroll', updateScrollRatio, { passive: true });
+
+      /* Resize */
+      function resizeParticle() {
+        pCanvas.width  = window.innerWidth;
+        pCanvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resizeParticle);
+      resizeParticle();
+
+      /* Pool de particules */
+      const particles = [];
+
+      function createParticle() {
+        const size = 0.8 + Math.random() * 2.4;
+        return {
+          x:       Math.random() * pCanvas.width,
+          y:       Math.random() * pCanvas.height,
+          vx:      (Math.random() - 0.5) * 0.18,
+          vy:      -0.08 - Math.random() * 0.22,      /* dérive vers le haut */
+          size,
+          baseSize: size,
+          color:   GOLD_COLORS[Math.floor(Math.random() * GOLD_COLORS.length)],
+          alpha:   0,
+          targetAlpha: 0.12 + Math.random() * 0.55,
+          phase:   Math.random() * Math.PI * 2,        /* oscillation */
+          phaseSpeed: 0.004 + Math.random() * 0.008,
+          life:    0,                                  /* 0→1 naissance, >1 mort */
+          lifeSpeed: 0.0008 + Math.random() * 0.0012,
+          born:    false,
+        };
+      }
+
+      /* Initialise le pool vide */
+      for (let i = 0; i < MAX_PARTICLES; i++) particles.push(createParticle());
+
+      /* Nombre cible de particules visibles selon scrollRatio */
+      function targetCount() {
+        /* Courbe en puissance : lent au début, rapide à la fin */
+        const t = Math.pow(scrollRatio, 1.6);
+        return Math.round(t * MAX_PARTICLES);
+      }
+
+      let activeCount = 0;
+
+      function tickParticles() {
+        const W = pCanvas.width;
+        const H = pCanvas.height;
+        const target = targetCount();
+
+        /* Activer de nouvelles particules progressivement */
+        if (activeCount < target) {
+          const toActivate = Math.min(target - activeCount, 2);
+          let activated = 0;
+          for (let i = 0; i < particles.length && activated < toActivate; i++) {
+            if (!particles[i].born) {
+              const p = particles[i];
+              p.x     = Math.random() * W;
+              p.y     = H + Math.random() * 60;       /* entre par le bas */
+              p.alpha = 0;
+              p.life  = 0;
+              p.born  = true;
+              activeCount++;
+              activated++;
+            }
+          }
+        }
+
+        /* Désactiver des particules si on remonte */
+        if (activeCount > target + 4) {
+          let deactivated = 0;
+          for (let i = particles.length - 1; i >= 0 && deactivated < 2; i--) {
+            if (particles[i].born && particles[i].life > 0.05) {
+              particles[i].life = 0.95;               /* accélère la mort */
+              deactivated++;
+            }
+          }
+        }
+
+        pCtx.clearRect(0, 0, W, H);
+
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          if (!p.born) continue;
+
+          /* Cycle de vie */
+          p.life += p.lifeSpeed;
+
+          const fadeIn  = clamp(p.life / 0.12, 0, 1);
+          const fadeOut = p.life > 0.85 ? clamp(1 - (p.life - 0.85) / 0.15, 0, 1) : 1;
+          p.alpha = p.targetAlpha * fadeIn * fadeOut;
+
+          /* Mouvement */
+          p.phase += p.phaseSpeed;
+          p.x += p.vx + Math.sin(p.phase) * 0.12;
+          p.y += p.vy;
+
+          /* Oscillation de taille */
+          const sizePulse = 1 + Math.sin(p.phase * 1.7) * 0.15;
+          const drawSize  = p.baseSize * sizePulse;
+
+          /* Rendu : point lumineux avec halo */
+          pCtx.save();
+          pCtx.globalAlpha = p.alpha;
+
+          /* Halo extérieur */
+          const grad = pCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, drawSize * 3.5);
+          grad.addColorStop(0,   p.color);
+          grad.addColorStop(0.4, p.color + '88');
+          grad.addColorStop(1,   p.color + '00');
+          pCtx.beginPath();
+          pCtx.arc(p.x, p.y, drawSize * 3.5, 0, Math.PI * 2);
+          pCtx.fillStyle = grad;
+          pCtx.fill();
+
+          /* Point central */
+          pCtx.beginPath();
+          pCtx.arc(p.x, p.y, drawSize, 0, Math.PI * 2);
+          pCtx.fillStyle = '#fff';
+          pCtx.globalAlpha = p.alpha * 0.85;
+          pCtx.fill();
+
+          pCtx.restore();
+
+          /* Rebirth quand morte ou sortie par le haut */
+          if (p.life >= 1 || p.y < -20) {
+            if (activeCount <= target) {
+              /* Réinitialiser pour un nouveau cycle */
+              p.x     = Math.random() * W;
+              p.y     = H + Math.random() * 40;
+              p.vx    = (Math.random() - 0.5) * 0.18;
+              p.vy    = -0.08 - Math.random() * 0.22;
+              p.phase = Math.random() * Math.PI * 2;
+              p.life  = 0;
+              p.targetAlpha = 0.12 + Math.random() * 0.55;
+              p.baseSize    = 0.8 + Math.random() * 2.4;
+              p.color = GOLD_COLORS[Math.floor(Math.random() * GOLD_COLORS.length)];
+            } else {
+              p.born = false;
+              activeCount--;
+            }
+          }
+        }
+      }
+
+      /* Intégré dans la boucle principale via un second rAF léger */
+      (function loopP() {
+        requestAnimationFrame(loopP);
+        tickParticles();
+      })();
+    })();
 
   })();
   </script>
