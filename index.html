@@ -1216,10 +1216,6 @@
           box.setFromObject(mdl);
           const c = new THREE.Vector3(); box.getCenter(c);
           mdl.position.sub(c);
-          mdl.position.x -= 0.5;
-          mdl.traverse(child => {
-            if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
-          });
           /* Sur mobile : modèle centré ; sur desktop : décalé à gauche */
           if (!isMobile()) mdl.position.x -= 0.5;
 
