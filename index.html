@@ -1258,6 +1258,7 @@
 
       if (isMobile()) {
         /* Mobile : un seul message (le CTA), rotation automatique lente */
+        msgs.forEach(m => m.classList.remove('active'));
         msgs[msgs.length - 1].classList.add('active');
         setInterval(() => { targetRotY += 0.008; }, 16);
       } else {
