@@ -639,6 +639,120 @@
        UTILITAIRE
     ============================================================ */
     canvas { display: block; }
+
+    /* ============================================================
+       RESPONSIVE MOBILE
+    ============================================================ */
+    @media (max-width: 767px) {
+
+      /* — Hero — */
+      .hero-wordmark {
+        font-size: clamp(2.6rem, 14vw, 3.8rem);
+        letter-spacing: 0.18em;
+      }
+      .hero-baseline {
+        font-size: 0.95rem;
+        letter-spacing: 0.05em;
+        padding: 0 1rem;
+        text-align: center;
+      }
+      #scroll-cue { bottom: 1.8rem; }
+
+      /* — Section 3D : hauteur réduite sur mobile — */
+      #section-3d { height: 120vh; }
+
+      /* Fond semi-transparent derrière les messages pour lisibilité */
+      .sticky-stage::before {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 55%;
+        background: linear-gradient(to top, rgba(8,8,8,0.88) 0%, transparent 100%);
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .msg-layer { align-items: flex-end; padding: 0; z-index: 2; }
+
+      .msg-step {
+        right: 0; left: 0;
+        max-width: 100%;
+        bottom: 1.5rem; top: auto;
+        text-align: center;
+        padding: 0 1.4rem;
+      }
+      .msg-surtitre {
+        font-size: 0.5rem;
+        letter-spacing: 0.22em;
+        margin-bottom: 0.6rem;
+      }
+      .msg-titre {
+        font-size: clamp(1.4rem, 5.5vw, 1.9rem);
+        letter-spacing: 0.02em;
+        margin-bottom: 0.7rem;
+      }
+      .msg-corps {
+        font-size: 0.65rem;
+        line-height: 1.7;
+        letter-spacing: 0.01em;
+      }
+      .msg-cta {
+        margin-top: 1rem;
+        padding: 0.6rem 1.4rem;
+        font-size: 0.52rem;
+        letter-spacing: 0.18em;
+      }
+
+      /* — Collection — */
+      #collection { padding: 4rem 5vw 4rem; }
+      .sec-eyebrow { letter-spacing: 0.22em; }
+      .sec-title { letter-spacing: 0.03em; }
+      .sec-sub { font-size: 0.65rem; letter-spacing: 0.08em; }
+      .cards-row { gap: 1rem; max-width: 100%; }
+
+      /* — Savoir-faire — */
+      #savoir-faire { padding: 4rem 5vw; }
+      .sf-col { padding: 0 0.8rem; }
+      .sf-col-title { font-size: 1.15rem; }
+      .sf-col-text { font-size: 0.68rem; }
+      .sf-cols { margin-top: 2.5rem; gap: 2rem; }
+
+      /* — CTA — */
+      #cta { padding: 5rem 5vw; }
+      .cta-title {
+        font-size: clamp(1.9rem, 7vw, 2.6rem);
+        letter-spacing: 0.02em;
+      }
+      .cta-sub {
+        font-size: 0.6rem;
+        letter-spacing: 0.1em;
+        padding: 0 1rem;
+      }
+      .cta-btns {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.85rem;
+      }
+      .btn-gold, .btn-outline {
+        width: 100%;
+        max-width: 280px;
+        text-align: center;
+        padding: 1rem 1.2rem;
+        letter-spacing: 0.18em;
+      }
+
+      /* — Footer — */
+      .footer-logo { letter-spacing: 0.28em; font-size: 1.3rem; }
+      .footer-nav  { gap: 1.1rem 1.8rem; }
+      .footer-nav a { font-size: 0.55rem; letter-spacing: 0.15em; }
+      footer { padding: 3rem 5vw 2rem; }
+    }
+
+    @media (max-width: 380px) {
+      .hero-wordmark { letter-spacing: 0.12em; }
+      .msg-titre { font-size: 1.3rem; }
+      .cta-title { font-size: 1.75rem; }
+    }
   </style>
 </head>
 <body>
@@ -1091,9 +1205,10 @@
 
     animate();
 
-    /* ── Mobile : rotation douce en boucle ─────────────── */
+    /* ── Mobile : un seul message visible, rotation auto ── */
     if (isMobile()) {
-      msgs.forEach(m => m.classList.add('active'));
+      /* N'activer que le dernier message (CTA collection) */
+      msgs[msgs.length - 1].classList.add('active');
       setInterval(() => { targetRotY += 0.008; }, 16);
     }
 
