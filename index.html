@@ -164,10 +164,8 @@
       text-transform: uppercase;
       color: rgba(201,168,76,0.55);
     }
-    @media (max-width: 767px) {
-      #mobile-bust-placeholder { display: flex; }
-      #main-canvas { display: none; }
-    }
+    /* Le placeholder mobile est masqué — le canvas WebGL reste visible */
+    #mobile-bust-placeholder { display: none; }
 
     /* ============================================================
        NAVBAR
@@ -1146,30 +1144,7 @@
     }
 
     /* ====================================================
-       MOBILE — pas de WebGL, on affiche le placeholder CSS
-       et on masque le preloader rapidement
-    ==================================================== */
-    if (isMobile()) {
-      const msgs = [0,1,2,3].map(i => document.getElementById('msg-' + i));
-      msgs[msgs.length - 1].classList.add('active');
-
-      window.addEventListener('scroll', onScrollHero, { passive: true });
-
-      /* Preloader minimal sur mobile (pas de GLB à charger) */
-      let mp = 0;
-      const mTimer = setInterval(() => {
-        mp += 8;
-        setProgress(mp);
-        if (mp >= 100) { clearInterval(mTimer); dismissPreloader(); }
-      }, 40);
-
-      /* Particules */
-      initParticles();
-      return; /* ← quitte le bloc, Three.js n'est pas chargé */
-    }
-
-    /* ====================================================
-       DESKTOP — chargement dynamique de Three.js + GLB
+       CHARGEMENT THREE.JS (mobile + desktop)
     ==================================================== */
     setProgress(5);
 
@@ -1245,6 +1220,9 @@
           mdl.traverse(child => {
             if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
           });
+          /* Sur mobile : modèle centré ; sur desktop : décalé à gauche */
+          if (!isMobile()) mdl.position.x -= 0.5;
+
           mainScene.add(mdl);
           mainModel = mdl;
           dismissPreloader();
@@ -1273,32 +1251,34 @@
       window.addEventListener('resize', resizeMain);
       resizeMain();
 
-      /* ── Scroll → rotation ───────────────────────────── */
+      /* ── Messages + scroll/rotation ─────────────────── */
       const sec3d = document.getElementById('section-3d');
       const msgs  = [0,1,2,3].map(i => document.getElementById('msg-' + i));
       let targetRotY = 0, currentRotY = 0, targetScale = 1, currentScale = 1;
 
-      function getProgress3D() {
-        const rect  = sec3d.getBoundingClientRect();
-        const total = sec3d.offsetHeight - window.innerHeight;
-        return clamp(-rect.top / total, 0, 1);
+      if (isMobile()) {
+        /* Mobile : un seul message (le CTA), rotation automatique lente */
+        msgs[msgs.length - 1].classList.add('active');
+        setInterval(() => { targetRotY += 0.008; }, 16);
+      } else {
+        /* Desktop : rotation pilotée par le scroll */
+        function getProgress3D() {
+          const rect  = sec3d.getBoundingClientRect();
+          const total = sec3d.offsetHeight - window.innerHeight;
+          return clamp(-rect.top / total, 0, 1);
+        }
+        function updateMsgs(p) {
+          const ranges = [[0,0.25],[0.25,0.5],[0.5,0.75],[0.75,1]];
+          msgs.forEach((m, i) => m.classList.toggle('active', p >= ranges[i][0] && p < ranges[i][1]));
+        }
+        function onScroll3D() {
+          const p = getProgress3D();
+          targetRotY  = p * Math.PI * 4;
+          targetScale = p > 0.9 ? lerp(1, 0.7, (p - 0.9) / 0.1) : 1;
+          updateMsgs(p);
+        }
+        window.addEventListener('scroll', () => { onScrollHero(); onScroll3D(); }, { passive: true });
       }
-      function updateMsgs(p) {
-        const ranges = [[0,0.25],[0.25,0.5],[0.5,0.75],[0.75,1]];
-        msgs.forEach((m, i) => m.classList.toggle('active', p >= ranges[i][0] && p < ranges[i][1]));
-      }
-      function onScroll3D() {
-        const p = getProgress3D();
-        targetRotY  = p * Math.PI * 4;
-        targetScale = p > 0.9 ? lerp(1, 0.7, (p - 0.9) / 0.1) : 1;
-        updateMsgs(p);
-      }
-
-      function onScrollAll() {
-        onScrollHero();
-        onScroll3D();
-      }
-      window.addEventListener('scroll', onScrollAll, { passive: true });
 
       /* ── Boucle de rendu ─────────────────────────────── */
       let clock = 0;
@@ -1316,10 +1296,7 @@
       })();
     }
 
-    /* ── Particules (desktop aussi) ──────────────────── */
     initParticles();
-
-    /* Scroll hero sur desktop */
     window.addEventListener('scroll', onScrollHero, { passive: true });
 
     /* ====================================================
